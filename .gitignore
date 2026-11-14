@@ -1,0 +1,20 @@
+# Virtualenv and build output
+.venv/
+build/
+dist/
+release/
+
+# Runtime state: user config and recorded clips are not part of the source
+config/
+debug/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

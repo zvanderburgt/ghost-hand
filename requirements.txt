@@ -1,0 +1,7 @@
+pyrealsense2>=2.56
+mediapipe>=0.10
+PySide6>=6.7
+opencv-python>=4.9
+numpy>=1.26
+pynput>=1.7
+pywin32>=306

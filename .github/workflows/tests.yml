@@ -1,0 +1,39 @@
+name: tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run checks
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $suites = Get-ChildItem scripts -Filter '*_check.py' | Sort-Object Name
+          $suites += Get-Item scripts\pose_regression.py
+          $failed = @()
+          foreach ($suite in $suites) {
+            Write-Host "== $($suite.Name) =="
+            python $suite.FullName
+            if ($LASTEXITCODE -ne 0) { $failed += $suite.Name }
+          }
+          if ($failed.Count -gt 0) {
+            Write-Host "Failed: $($failed -join ', ')"
+            exit 1
+          }
+          Write-Host "All $($suites.Count) suites passed."
