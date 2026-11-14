@@ -31,6 +31,9 @@ Write-Host "== staging $name ==" -ForegroundColor Cyan
 Remove-Item 'release' -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 Copy-Item (Join-Path $source '*') $stage -Recurse -Force
+# Never ship local state: every user should get a pristine first run.
+Remove-Item (Join-Path $stage 'config') -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $stage 'debug') -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item 'installer\install-local.ps1' $stage
 Copy-Item 'installer\Install shortcuts.cmd' $stage
 Copy-Item 'LICENSE' $stage
