@@ -5,3 +5,5 @@ opencv-python>=4.9
 numpy>=1.26
 pynput>=1.7
 pywin32>=306
+sounddevice>=0.5
+soundfile>=0.13
