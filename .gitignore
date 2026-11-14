@@ -3,6 +3,7 @@
 build/
 dist/
 release/
+tools/
 
 # Runtime state: user config and recorded clips are not part of the source
 config/
