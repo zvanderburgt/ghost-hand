@@ -21,6 +21,7 @@ from gr.ui.custom_dialog import CustomGesturesDialog  # noqa: E402
 from gr.ui.guide_dialog import GuideDialog  # noqa: E402
 from gr.ui.macros_dialog import MacrosDialog  # noqa: E402
 from gr.ui.sounds_dialog import SoundsDialog  # noqa: E402
+from gr.ui.tuning_dialog import TuningDialog  # noqa: E402
 
 
 def main() -> int:
@@ -91,7 +92,16 @@ def main() -> int:
     guide.grab().save(str(out))
     print(f"saved {out}")
 
-    for dialog in (bindings, macros, sounds, custom, guide):
+    tuning = TuningDialog(Settings.load())
+    tuning.show()
+    app.processEvents()
+    tuning.resize(720, 640)
+    app.processEvents()
+    out = DEBUG_DIR / "tuning-dialog.png"
+    tuning.grab().save(str(out))
+    print(f"saved {out}")
+
+    for dialog in (bindings, macros, sounds, custom, guide, tuning):
         dialog.close()
         dialog.deleteLater()
     app.processEvents()

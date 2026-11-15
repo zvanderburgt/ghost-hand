@@ -221,6 +221,10 @@ def stylesheet() -> str:
         background: {ACCENT};
         border-color: {ACCENT};
     }}
+    QCheckBox::indicator:checked:disabled {{
+        background: #4A4A50;
+        border-color: #4A4A50;
+    }}
 
     QMenu {{
         background: #2A2A2E;
