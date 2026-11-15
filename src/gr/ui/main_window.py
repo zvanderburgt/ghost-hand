@@ -15,6 +15,7 @@ from ..config import GESTURES, APP_NAME, Settings
 from ..diagnostics import run_all
 from ..pipeline import StepResult, VisionPipeline
 from . import theme
+from .armed_overlay import ArmedOverlay
 from .bindings_dialog import BindingsDialog
 from .calibration_dialog import CalibrationDialog
 from .diagnostics_dialog import DiagnosticsDialog
@@ -122,6 +123,8 @@ class MainWindow(QMainWindow):
         self._camera_ok = False
         self._quitting = False
         self.tray = None
+        self._overlay: ArmedOverlay | None = None
+        self._was_armed_toast = False
 
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(app_icon())
@@ -165,6 +168,13 @@ class MainWindow(QMainWindow):
     def show_tuning(self) -> None:
         dialog = TuningDialog(self.settings, self)
         dialog.exec()
+
+    def _show_armed_toast(self) -> None:
+        if not bool(self.settings.get("ui.armed_toast", True)):
+            return
+        if self._overlay is None:
+            self._overlay = ArmedOverlay()
+        self._overlay.show_armed()
 
     # ------------------------------------------------------------------ #
     # Layout
@@ -264,12 +274,11 @@ class MainWindow(QMainWindow):
         self.macros_btn.clicked.connect(self._open_macros)
         row.addWidget(self.macros_btn)
 
-        help_btn = QPushButton("?")
-        help_btn.setProperty("variant", "ghost")
-        help_btn.setFixedWidth(30)
-        help_btn.setToolTip("How Ghost Hand works")
-        help_btn.clicked.connect(self.show_guide)
-        row.addWidget(help_btn)
+        self.guide_btn = QPushButton("Guide")
+        self.guide_btn.setProperty("variant", "ghost")
+        self.guide_btn.setToolTip("How Ghost Hand works")
+        self.guide_btn.clicked.connect(self.show_guide)
+        row.addWidget(self.guide_btn)
 
         return row
 
@@ -592,6 +601,9 @@ class MainWindow(QMainWindow):
             self.video_card.setProperty("armed", armed)
             self.video_card.style().unpolish(self.video_card)
             self.video_card.style().polish(self.video_card)
+        if armed and not self._was_armed_toast:
+            self._show_armed_toast()
+        self._was_armed_toast = armed
 
         label = state.stable_label or state.label
         stable = state.stable_label is not None

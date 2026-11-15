@@ -64,6 +64,14 @@ Click by holding the pointer still, for people who find pinching unreliable.
 - [x] Issue templates and PR template
 - Acceptance: a newcomer can go from clone to green tests using only the docs.
 
+## Pending review
+
+- [ ] **0.7.0 release decision (check after 2026-11-17).** 0.7.0 is committed but
+  untagged. Run it daily for a couple of days — cursor feel, right-click, scroll,
+  dwell, tuning persistence, per-gesture switches, title profiles, armed toast —
+  then tag `v0.7.0` (CI builds the release) or fix and retag. Tracked as a GitHub
+  issue as well.
+
 ## Out of scope
 
 - Code signing (needs a purchased certificate).

@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QCheckBox, QDialog, QHBoxLayout, QLabel,
-                               QListWidget, QPushButton, QScrollArea,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QListWidget,
+                               QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
 from ..config import APP_NAME, GESTURES, Settings
 from . import theme
@@ -153,9 +152,6 @@ class GuideDialog(QDialog):
         root.addLayout(body, 1)
 
         bottom = QHBoxLayout()
-        self.startup_check = QCheckBox("Open this guide at startup")
-        self.startup_check.setChecked(not bool(self.settings.get("ui.guide_seen", False)))
-        bottom.addWidget(self.startup_check)
         bottom.addStretch(1)
 
         self.back_btn = QPushButton("Back")
@@ -205,7 +201,7 @@ class GuideDialog(QDialog):
 
     def _finish(self) -> None:
         try:
-            self.settings.set("ui.guide_seen", not self.startup_check.isChecked())
+            self.settings.set("ui.guide_seen", True)
             self.settings.save()
         except OSError:
             pass
@@ -214,7 +210,7 @@ class GuideDialog(QDialog):
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt naming
         try:
-            self.settings.set("ui.guide_seen", not self.startup_check.isChecked())
+            self.settings.set("ui.guide_seen", True)
             self.settings.save()
         except OSError:
             pass

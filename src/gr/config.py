@@ -186,6 +186,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "start_minimized": False,
         "guide_seen": False,
         "check_updates": True,
+        "armed_toast": True,
     },
     "autostart": False,
     "disabled_gestures": [],

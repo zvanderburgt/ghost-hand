@@ -77,6 +77,11 @@ Pushing a tag like `v0.6.0` makes GitHub Actions build and attach that zip autom
 
 Also implemented but unbound: fist, three fingers, OK sign.
 
+When the app arms, a small **pill appears at the bottom-centre of the screen** — over
+whatever app is focused — so you can tell it is listening without looking for the tray
+icon. It follows your Windows accent colour, sits on the monitor you are using, and fades
+out by itself. Turn it off with `ui.armed_toast`.
+
 Rebind later by editing `config/settings.json` (`bindings` array) — or use the in-app
 **Bindings** editor, which also holds the volume-dial tuning.
 
@@ -351,10 +356,11 @@ ready-made Inno Setup script if you want a single `Setup.exe` instead.
 
 ## First run
 
-The first launch opens a **seven-step guide** covering what the app does, arming, the
+The very first launch opens a **seven-step guide** covering what the app does, arming, the
 gesture table, practice vs live mode, bindings/macros/sounds, the cursor, and the tray. It
-sets `ui.guide_seen` when closed; uncheck "Open this guide at startup" to stop it, and
-reopen it any time with the **?** button in the header or **How it works…** in the tray.
+sets `ui.guide_seen` when closed and never reopens on its own.
+
+To read it again, use the **Guide** button in the header or **How it works…** in the tray.
 
 ## Checking for conflicts
 
@@ -409,6 +415,7 @@ check runs at startup and summarises findings in the event log.
 | `cursor.dwell_enabled` | `false` | Click by holding still |
 | `cursor.dwell_ms` / `dwell_radius_px` | 800 / 14 | Dwell timing and tolerance |
 | `ui.check_updates` | `true` | Look for newer releases at startup |
+| `ui.armed_toast` | `true` | Bottom-centre pill when armed |
 | `disabled_gestures` | `[]` | Gesture ids that are switched off |
 | `engine.swipe_enabled` | `true` | Directional open-palm swipes |
 | `engine.swipe_pose` | `open_palm` | Pose required to start a swipe (`""` = any) |
