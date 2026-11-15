@@ -7,7 +7,8 @@ without stealing input. Colour follows the Windows accent setting.
 from __future__ import annotations
 
 from PySide6.QtCore import QPropertyAnimation, QRect, QRectF, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QCursor, QPainter, QPen
+from PySide6.QtGui import (QColor, QCursor, QFont, QFontMetrics, QPainter,
+                           QPen)
 from PySide6.QtWidgets import QApplication, QWidget
 
 FALLBACK_ACCENT = QColor("#4CC2FF")
@@ -64,8 +65,12 @@ def pill_rect(screen: QRect, size: QSize, margin: int = 72) -> QRect:
 
 
 class ArmedOverlay(QWidget):
-    WIDTH = 132
     HEIGHT = 36
+    FONT_POINT = 9.0
+    PAD_LEFT = 32          # room for the dot
+    PAD_RIGHT = 14
+    DOT_LEFT = 18.0
+    DOT_SIZE = 8.0
 
     def __init__(self, parent=None) -> None:
         flags = (Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
@@ -73,9 +78,18 @@ class ArmedOverlay(QWidget):
         super().__init__(parent, flags)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
-        self.setFixedSize(self.WIDTH, self.HEIGHT)
+
+        # Width follows the text instead of a fixed box, so there is no dead
+        # space after the label and it still adapts to DPI.
+        self._font = QFont(self.font())
+        self._font.setPointSizeF(self.FONT_POINT)
+        self._font.setBold(True)
+        text_width = QFontMetrics(self._font).horizontalAdvance("ARMED")
+        self.setFixedSize(self.PAD_LEFT + text_width + self.PAD_RIGHT, self.HEIGHT)
+
         self._accent = system_accent_color()
         self._fading_out = False
+        self._text_width = text_width
 
         self._anim = QPropertyAnimation(self, b"windowOpacity", self)
         self._anim.finished.connect(self._on_anim_finished)
@@ -129,15 +143,16 @@ class ArmedOverlay(QWidget):
 
         painter.setPen(Qt.NoPen)
         painter.setBrush(self._accent)
-        painter.drawEllipse(QRectF(18.0, self.height() / 2.0 - 4.0, 8.0, 8.0))
+        painter.drawEllipse(
+            QRectF(self.DOT_LEFT, self.height() / 2.0 - self.DOT_SIZE / 2.0,
+                   self.DOT_SIZE, self.DOT_SIZE)
+        )
 
-        font = painter.font()
-        font.setPointSizeF(9.0)
-        font.setBold(True)
-        painter.setFont(font)
+        painter.setFont(self._font)
         painter.setPen(QColor(240, 245, 250))
         painter.drawText(
-            QRectF(34.0, 0.0, self.width() - 42.0, float(self.height())),
+            QRectF(float(self.PAD_LEFT), 0.0, float(self._text_width),
+                   float(self.height())),
             int(Qt.AlignVCenter | Qt.AlignLeft),
             "ARMED",
         )
