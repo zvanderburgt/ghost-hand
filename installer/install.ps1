@@ -45,7 +45,11 @@ if (-not (Test-Path (Join-Path $Source $exeName))) {
 
 Get-Process -Name 'GhostHand', 'GestureControl' -ErrorAction SilentlyContinue | Stop-Process -Force
 New-Item -ItemType Directory -Force -Path $Target | Out-Null
-Copy-Item -Path (Join-Path $Source '*') -Destination $Target -Recurse -Force
+# Copy the program, never the runtime state: an upgraded install keeps the
+# config it already has, and a fresh one starts clean.
+Get-ChildItem (Join-Path $Source '*') -Force |
+    Where-Object { $_.Name -notin @('config', 'debug') } |
+    ForEach-Object { Copy-Item $_.FullName $Target -Recurse -Force }
 
 $exe = Join-Path $Target $exeName
 $shell = New-Object -ComObject WScript.Shell

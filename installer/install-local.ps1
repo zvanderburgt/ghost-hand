@@ -46,7 +46,10 @@ if ($source.TrimEnd('\') -eq $target.TrimEnd('\')) {
 
 Get-Process -Name 'GhostHand' -ErrorAction SilentlyContinue | Stop-Process -Force
 New-Item -ItemType Directory -Force -Path $target | Out-Null
-Copy-Item -Path (Join-Path $source '*') -Destination $target -Recurse -Force
+# Never copy runtime state; keep any config an existing install already has.
+Get-ChildItem (Join-Path $source '*') -Force |
+    Where-Object { $_.Name -notin @('config', 'debug') } |
+    ForEach-Object { Copy-Item $_.FullName $target -Recurse -Force }
 
 $exe = Join-Path $target $exeName
 $shell = New-Object -ComObject WScript.Shell

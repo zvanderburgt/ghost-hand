@@ -45,3 +45,10 @@ if (-not $NoTest) {
     }
     Write-Host "== smoke test exit code: $($p.ExitCode) ==" -ForegroundColor Green
 }
+
+# The smoke test writes user state (settings, the "guide seen" flag). Never
+# ship that: a fresh install must get a first-run experience.
+foreach ($folder in @('config', 'debug')) {
+    $path = Join-Path 'dist\GhostHand' $folder
+    Remove-Item $path -Recurse -Force -ErrorAction SilentlyContinue
+}
