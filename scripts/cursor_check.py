@@ -39,6 +39,9 @@ class FakeMouse:
     def release(self, button) -> None:
         self.calls.append(("release", getattr(button, "name", str(button))))
 
+    def scroll(self, dx, dy) -> None:
+        self.calls.append(("scroll", dx, dy))
+
 
 SCREEN = (0, 0, 1000, 500)
 
@@ -142,6 +145,80 @@ def main() -> int:
     cur.reset()                                       # hand left the frame
     check("hand loss releases a held drag",
           ("release", "left") in lost.calls and not cur.dragging, str(lost.calls))
+
+    # ---- right click ----------------------------------------------------- #
+    right = FakeMouse()
+    cur = CursorController(settings(), mouse=right, screen=SCREEN)
+    settle(cur, 0.5, 0.5, 0.0)
+    info = cur.update(0.5, 0.5, 0.90, 4000.0, middle_pinch_ratio=0.20)
+    check("middle pinch alone does not click yet", not info["right_clicked"], str(info))
+    info = cur.update(0.5, 0.5, 0.90, 4060.0, middle_pinch_ratio=0.60)
+    check("releasing the middle pinch right-clicks",
+          info["right_clicked"] and ("click", "right") in right.calls, str(right.calls))
+
+    both = FakeMouse()
+    cur = CursorController(settings(), mouse=both, screen=SCREEN)
+    settle(cur, 0.5, 0.5, 0.0)
+    cur.update(0.5, 0.5, 0.20, 5000.0, middle_pinch_ratio=0.20)   # both pinched
+    cur.update(0.5, 0.5, 0.70, 5100.0, middle_pinch_ratio=0.70)   # both released
+    check("left pinch wins over right", both.calls == [("click", "left")], str(both.calls))
+
+    # ---- scroll ---------------------------------------------------------- #
+    scrolling = FakeMouse()
+    cur = CursorController(settings(), mouse=scrolling, screen=SCREEN)
+    cur.update(0.5, 0.50, 1.0, 6000.0, scroll_mode=True)          # baseline
+    before = cur.last
+    info = cur.update(0.5, 0.54, 1.0, 6040.0, scroll_mode=True)   # hand down 4%
+    check("moving down scrolls down",
+          info["scrolled"] > 0 and ("scroll", 0, -info["scrolled"]) in scrolling.calls,
+          str(scrolling.calls))
+    check("pointer stays put while scrolling", cur.last == before, f"{before} -> {cur.last}")
+
+    cur.update(0.5, 0.50, 1.0, 6100.0, scroll_mode=True)          # back to start
+    info = cur.update(0.5, 0.46, 1.0, 6140.0, scroll_mode=True)   # hand up 8%
+    check("moving up scrolls up",
+          info["scrolled"] < 0 and ("scroll", 0, -info["scrolled"]) in scrolling.calls,
+          str(scrolling.calls))
+
+    # ---- dwell clicking -------------------------------------------------- #
+    dwell_settings = settings()
+    dwell_settings.set("cursor.dwell_enabled", True)
+    dwell_settings.set("cursor.dwell_ms", 500)
+    dwell_mouse = FakeMouse()
+    cur = CursorController(dwell_settings, mouse=dwell_mouse, screen=SCREEN)
+
+    info = cur.update(0.5, 0.5, 1.0, 8000.0)
+    dwell_fired = False
+    for step in range(1, 21):                       # ~800 ms still
+        info = cur.update(0.5, 0.5, 1.0, 8000.0 + step * 40)
+        dwell_fired = dwell_fired or bool(info.get("dwell"))
+    check("holding still dwells a click",
+          dwell_fired and ("click", "left") in dwell_mouse.calls, str(dwell_mouse.calls))
+
+    count = len(dwell_mouse.calls)
+    info = cur.update(0.5, 0.5, 1.0, 8900.0)
+    check("dwell does not repeat while still",
+          not info.get("dwell") and len(dwell_mouse.calls) == count, str(dwell_mouse.calls))
+
+    cur.update(0.9, 0.5, 1.0, 9000.0)               # move beyond the radius
+    info = cur.update(0.9, 0.5, 1.0, 9050.0)
+    dwell_fired = False
+    for step in range(1, 46):                       # let smoothing settle, then hold
+        info = cur.update(0.9, 0.5, 1.0, 9050.0 + step * 40)
+        dwell_fired = dwell_fired or bool(info.get("dwell"))
+    check("dwell re-arms after moving", dwell_fired, str(info))
+
+    cancel_settings = settings()
+    cancel_settings.set("cursor.dwell_enabled", True)
+    cancel_settings.set("cursor.dwell_ms", 400)
+    cancel_mouse = FakeMouse()
+    cur = CursorController(cancel_settings, mouse=cancel_mouse, screen=SCREEN)
+    cur.update(0.5, 0.5, 1.0, 9000.0)
+    cur.update(0.5, 0.5, 1.0, 9100.0)
+    cur.update(0.5, 0.5, 0.20, 9200.0)               # pinch cancels dwell
+    cur.update(0.5, 0.5, 0.90, 9300.0)
+    info = cur.update(0.5, 0.5, 1.0, 9600.0)
+    check("pinching cancels a pending dwell", not info.get("dwell"), str(cancel_mouse.calls))
 
     failures = 0
     for name, ok, detail in results:

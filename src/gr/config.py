@@ -219,7 +219,13 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "region_y1": 0.82,
         "pinch_enter": 0.40,           # pinch distance that starts a click
         "pinch_exit": 0.55,            # ...and the looser one that ends it
+        "right_pinch_enter": 0.30,     # thumb-to-middle, for right click
+        "right_pinch_exit": 0.42,
+        "scroll_step": 0.02,           # hand travel per wheel notch, in screen heights
         "drag_hold_ms": 400,           # hold past this to drag instead of click
+        "dwell_enabled": False,        # click by holding the pointer still
+        "dwell_ms": 800,
+        "dwell_radius_px": 14,
         "click_cooldown_ms": 320,
         "virtual_screen": True,        # span every monitor, not just the primary
     },

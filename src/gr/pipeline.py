@@ -170,12 +170,18 @@ class VisionPipeline:
             self._had_hand = has_hand
 
         # ---- pointer ------------------------------------------------- #
-        if state.pointer is not None:
+        if state.pointer is not None or state.pointer_scroll_mode:
+            pointer_x = state.pointer[0] if state.pointer else 0.5
+            pointer_y = state.pointer[1] if state.pointer else state.pointer_scroll_y
             info = self.cursor.update(
-                state.pointer[0], state.pointer[1], state.pointer_pinch_ratio, now_ms
+                pointer_x, pointer_y, state.pointer_pinch_ratio, now_ms,
+                middle_pinch_ratio=state.pointer_middle_pinch,
+                scroll_mode=state.pointer_scroll_mode,
             )
             if info["clicked"]:
-                events.append("Cursor click")
+                events.append("Cursor dwell click" if info.get("dwell") else "Cursor click")
+            if info.get("right_clicked"):
+                events.append("Cursor right-click")
             if info["dragging"] and not self._was_dragging:
                 events.append("Cursor drag started")
             self._was_dragging = info["dragging"]

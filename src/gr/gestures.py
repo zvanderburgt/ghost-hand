@@ -77,6 +77,7 @@ class Features:
     scale: float
     palm_width: float
     pinch_ratio: float
+    middle_pinch_ratio: float
 
     @property
     def others_curl(self) -> float:
@@ -141,6 +142,7 @@ def extract_features(hand: Hand) -> Features | None:
     thumb_angle = math.degrees(math.atan2(thumb_dir[1], thumb_dir[0]))
     index_angle = math.degrees(math.atan2(index_dir[1], index_dir[0]))
     pinch_ratio = _dist(px[4], px[8]) / scale
+    middle_pinch_ratio = _dist(px[4], px[12]) / scale
 
     # How far the thumb tip sticks out of the palm, in palm widths.
     #   thumb_dy       > 0  tip above the index knuckle  (thumb up)
@@ -166,6 +168,7 @@ def extract_features(hand: Hand) -> Features | None:
         scale=scale,
         palm_width=palm_width,
         pinch_ratio=pinch_ratio,
+        middle_pinch_ratio=middle_pinch_ratio,
     )
 
 
@@ -342,6 +345,9 @@ class EngineState:
     pointer: tuple[float, float] | None = None
     pointer_pinch: bool = False
     pointer_pinch_ratio: float = 1.0
+    pointer_middle_pinch: float = 1.0
+    pointer_scroll_mode: bool = False
+    pointer_scroll_y: float = 0.5
     distance_m: float | None = None
     gated: bool = False
     note: str = ""
@@ -488,6 +494,7 @@ class GestureEngine:
             if features.ext["index"] > 0.60 and others < 0.45:
                 state.pointer = (hand.landmarks[8][0], hand.landmarks[8][1])
                 state.pointer_pinch_ratio = features.pinch_ratio
+                state.pointer_middle_pinch = features.middle_pinch_ratio
                 state.pointer_pinch = features.pinch_ratio < 0.45
         label, conf = max(scores.items(), key=lambda kv: kv[1])
         if conf < threshold:
@@ -499,6 +506,11 @@ class GestureEngine:
         self._push_history(label)
         self._update_stability(now_ms, threshold)
         state.stable_label = self.stable
+
+        # Peace sign while cursor mode is on becomes scroll instead of a button.
+        if bool(self.s.get("cursor.enabled", False)) and self.stable == "peace":
+            state.pointer_scroll_mode = True
+            state.pointer_scroll_y = hand.landmarks[8][1]
 
         if self.stable and self.stable_since:
             state.hold_ms = int(now_ms - self.stable_since)
@@ -602,6 +614,7 @@ class GestureEngine:
             self.armed
             and self.stable
             and not dial_guard
+            and not state.pointer_scroll_mode
             and now_ms >= self._pose_suppress_until
             and state.pointer is None
             and bound_action not in (None, "none")

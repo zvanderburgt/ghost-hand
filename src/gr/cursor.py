@@ -112,6 +112,13 @@ class CursorController:
         self._dragging = False
         self._pinch_since = 0.0
         self._last_click_ms = -1e9
+        self._right_pinch = False
+        self._last_right_click_ms = -1e9
+        self._last_scroll_y: float | None = None
+        self._scroll_accum = 0.0
+        self._dwell_anchor: tuple[int, int] | None = None
+        self._dwell_since = 0.0
+        self._dwell_fired = False
         self.last = (0, 0)
 
     def _configure_filters(self) -> None:
@@ -133,14 +140,57 @@ class CursorController:
                 pass
             self._dragging = False
         self._pinch = False
+        self._right_pinch = False
+        self._last_scroll_y = None
+        self._scroll_accum = 0.0
+        self._dwell_anchor = None
+        self._dwell_fired = False
         self._fx.reset()
         self._fy.reset()
 
     # ------------------------------------------------------------------ #
 
-    def update(self, nx: float, ny: float, pinch_ratio: float, now_ms: float) -> dict:
+    def _scroll(self, ny: float) -> int:
+        """Vertical hand movement to wheel ticks; down is negative like a mouse."""
+        step = max(0.001, float(self.s.get("cursor.scroll_step", 0.02)))
+        if self._last_scroll_y is None:
+            self._last_scroll_y = ny
+            return 0
+        self._scroll_accum += ny - self._last_scroll_y
+        self._last_scroll_y = ny
+        ticks = int(self._scroll_accum / step)
+        if ticks:
+            try:
+                self._mouse.scroll(0, -ticks)
+            except Exception:  # noqa: BLE001
+                pass
+            self._scroll_accum -= ticks * step
+        return ticks
+
+    def update(self, nx: float, ny: float, pinch_ratio: float, now_ms: float,
+               middle_pinch_ratio: float = 1.0,
+               scroll_mode: bool = False) -> dict:
         self._configure_filters()
         t = now_ms / 1000.0
+
+        if scroll_mode:
+            if self._dragging:
+                try:
+                    self._mouse.release(Button.left)
+                except Exception:  # noqa: BLE001
+                    pass
+                self._dragging = False
+            self._pinch = False
+            self._right_pinch = False
+            ticks = self._scroll(ny)
+            return {
+                "x": self.last[0], "y": self.last[1],
+                "clicked": False, "right_clicked": False,
+                "dragging": False, "pinching": False, "scrolled": ticks,
+            }
+
+        self._last_scroll_y = None
+        self._scroll_accum = 0.0
 
         x0 = float(self.s.get("cursor.region_x0", 0.18))
         x1 = float(self.s.get("cursor.region_x1", 0.82))
@@ -204,10 +254,61 @@ class CursorController:
                     self._last_click_ms = now_ms
                     clicked = True
 
+        # Right click is thumb-to-middle, and yields to the left pinch.
+        right_enter = float(self.s.get("cursor.right_pinch_enter", 0.30))
+        right_exit = float(self.s.get("cursor.right_pinch_exit", 0.42))
+        was_right = self._right_pinch
+        if self._pinch:
+            self._right_pinch = False
+        elif self._right_pinch:
+            self._right_pinch = middle_pinch_ratio <= right_exit
+        else:
+            self._right_pinch = middle_pinch_ratio <= right_enter
+
+        right_clicked = False
+        if not self._right_pinch and was_right and not self._pinch:
+            cooldown = float(self.s.get("cursor.click_cooldown_ms", 320))
+            if (now_ms - self._last_right_click_ms) >= cooldown:
+                try:
+                    self._mouse.click(Button.right)
+                except Exception:  # noqa: BLE001
+                    pass
+                self._last_right_click_ms = now_ms
+                right_clicked = True
+
+        # Dwell: click by holding the pointer still. Cancelled by any pinch.
+        dwell_clicked = False
+        if self._pinch or self._right_pinch:
+            self._dwell_anchor = None
+            self._dwell_fired = False
+        elif bool(self.s.get("cursor.dwell_enabled", False)) and not self._dragging:
+            radius = float(self.s.get("cursor.dwell_radius_px", 14))
+            if self._dwell_anchor is None:
+                self._dwell_anchor = self.last
+                self._dwell_since = now_ms
+            else:
+                ax, ay = self._dwell_anchor
+                if ((self.last[0] - ax) ** 2 + (self.last[1] - ay) ** 2) ** 0.5 > radius:
+                    self._dwell_anchor = self.last
+                    self._dwell_since = now_ms
+                    self._dwell_fired = False
+
+            hold = float(self.s.get("cursor.dwell_ms", 800))
+            if not self._dwell_fired and (now_ms - self._dwell_since) >= hold:
+                try:
+                    self._mouse.click(Button.left)
+                except Exception:  # noqa: BLE001
+                    pass
+                self._dwell_fired = True
+                dwell_clicked = True
+
         return {
             "x": self.last[0],
             "y": self.last[1],
-            "clicked": clicked,
+            "clicked": clicked or dwell_clicked,
+            "dwell": dwell_clicked,
+            "right_clicked": right_clicked,
             "dragging": self._dragging,
             "pinching": self._pinch,
+            "scrolled": 0,
         }

@@ -26,17 +26,17 @@ Turn a gesture off entirely rather than just unbinding it.
 
 ## 3. Cursor: right-click and scroll
 
-- [ ] Right-click from thumb + middle tip, own cooldown
-- [ ] Scroll from the peace pose plus vertical hand movement
-- [ ] Both respect the freeze-while-pinching rule
+- [x] Right-click from thumb + middle tip, own cooldown
+- [x] Scroll from the peace pose plus vertical hand movement
+- [x] Both respect the freeze-while-pinching rule
 - Acceptance: `cursor_check.py` covers right-click edges and scroll accumulation.
 
 ## 4. Dwell clicking
 
 Click by holding the pointer still, for people who find pinching unreliable.
 
-- [ ] `cursor.dwell_enabled` (default off), `dwell_ms`, `dwell_radius_px`
-- [ ] One click per dwell, re-armed after leaving the radius
+- [x] `cursor.dwell_enabled` (default off), `dwell_ms`, `dwell_radius_px`
+- [x] One click per dwell, re-armed after leaving the radius
 - Acceptance: a stationary pointer clicks once; moving resets the timer.
 
 ## 5. Demo GIF
