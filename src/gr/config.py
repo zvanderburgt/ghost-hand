@@ -187,6 +187,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "guide_seen": False,
     },
     "autostart": False,
+    "disabled_gestures": [],
     "profiles": [],
     "macros": [],
     "sounds": [],
@@ -331,6 +332,23 @@ class Settings:
             row["target"] = target
         else:
             row.pop("target", None)
+
+    # -- gestures ---------------------------------------------------------- #
+
+    @property
+    def disabled_gestures(self) -> list[str]:
+        return self.data.setdefault("disabled_gestures", [])
+
+    def is_gesture_enabled(self, gesture_id: str) -> bool:
+        return gesture_id not in self.disabled_gestures
+
+    def set_gesture_enabled(self, gesture_id: str, enabled: bool) -> None:
+        rows = self.disabled_gestures
+        if enabled:
+            while gesture_id in rows:
+                rows.remove(gesture_id)
+        elif gesture_id not in rows:
+            rows.append(gesture_id)
 
     # -- profiles --------------------------------------------------------- #
 

@@ -8,10 +8,10 @@ acceptance criteria hold and the relevant checks pass (`scripts/*_check.py`).
 A dialog that exposes the thresholds currently buried in `settings.json`, with the
 defaults intact and changes applied live.
 
-- [ ] Pose confidence, stability frames, hold-to-fire, cooldown
-- [ ] Depth window (min/max metres)
-- [ ] Swipe distance and cooldown
-- [ ] Opened from Bindings ("Tuning…") and the tray
+- [x] Pose confidence, stability frames, hold-to-fire, cooldown
+- [x] Depth window (min/max metres)
+- [x] Swipe distance and cooldown
+- [x] Opened from Bindings ("Tuning…") and the tray
 - Acceptance: moving a slider changes engine behaviour without a restart; values
   persist on release; `tuning_check.py` covers score filtering and round-trip.
 
@@ -19,9 +19,9 @@ defaults intact and changes applied live.
 
 Turn a gesture off entirely rather than just unbinding it.
 
-- [ ] `disabled_gestures` in settings, honoured by the engine and chord detector
-- [ ] Checklist inside the tuning panel (arming pose not disableable)
-- [ ] Disabled gestures hidden from the Live scores board
+- [x] `disabled_gestures` in settings, honoured by the engine and chord detector
+- [x] Checklist inside the tuning panel (arming pose not disableable)
+- [x] Disabled gestures hidden from the Live scores board
 - Acceptance: a disabled gesture cannot win, cannot fire, and cannot form a chord.
 
 ## 3. Cursor: right-click and scroll

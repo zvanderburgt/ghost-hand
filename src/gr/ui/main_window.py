@@ -22,6 +22,7 @@ from .guide_dialog import GuideDialog
 from .icon import app_icon
 from .macros_dialog import MacrosDialog
 from .sounds_dialog import SoundsDialog
+from .tuning_dialog import TuningDialog
 from .widgets import (Card, EventLog, FlashLabel, MetricRow, ScoreBoard,
                       Segmented, StatusPill, Switch, VideoView)
 
@@ -129,6 +130,10 @@ class MainWindow(QMainWindow):
 
     def show_guide(self) -> None:
         dialog = GuideDialog(self.settings, self)
+        dialog.exec()
+
+    def show_tuning(self) -> None:
+        dialog = TuningDialog(self.settings, self)
         dialog.exec()
 
     # ------------------------------------------------------------------ #

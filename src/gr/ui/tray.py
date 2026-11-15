@@ -27,6 +27,10 @@ class TrayIcon(QSystemTrayIcon):
         guide_action.triggered.connect(self.window.show_guide)
         menu.addAction(guide_action)
 
+        tuning_action = QAction("Tuning…", menu)
+        tuning_action.triggered.connect(self.window.show_tuning)
+        menu.addAction(tuning_action)
+
         menu.addSeparator()
 
         self.practice_action = QAction("Practice mode (no keys sent)", menu)

@@ -266,11 +266,15 @@ class ChordDetector:
         self._latched = None
 
     @staticmethod
-    def _label(hand: Hand, threshold: float) -> str | None:
+    def _label(hand: Hand, threshold: float, disabled: set[str] | None = None) -> str | None:
         features = extract_features(hand)
         if features is None or features.scale < 18.0:
             return None
         scores = score_poses(features)
+        for gesture_id in disabled or ():
+            scores.pop(gesture_id, None)
+        if not scores:
+            return None
         label, confidence = max(scores.items(), key=lambda kv: kv[1])
         return label if confidence >= threshold else None
 
@@ -281,10 +285,11 @@ class ChordDetector:
             self.reset()
             return None
 
+        disabled = set(self.s.disabled_gestures)
         labels: list[str] = []
         for index in range(2):
             history = self._history[index]
-            history.append(self._label(hands[index], threshold))
+            history.append(self._label(hands[index], threshold, disabled))
             counts = Counter(item for item in history if item)
             if not counts:
                 continue
@@ -453,8 +458,19 @@ class GestureEngine:
             sample = shape_descriptor(hand)
             for learned in custom_gestures:
                 template = learned.get("template")
-                if template:
-                    scores[f"custom:{learned.get('id')}"] = match_score(template, sample)
+                if template is None:
+                    continue
+                value = match_score(template, sample)
+                if value > 0.0:
+                    scores[f"custom:{learned.get('id')}"] = value
+
+        # Gestures switched off in Tuning can never win. Applied after custom
+        # gestures are scored, and the arming pose is exempt so the app cannot
+        # be locked out of arming itself.
+        arm_pose = self.s.get("engine.arm_pose", "rock")
+        for gesture_id in self.s.disabled_gestures:
+            if gesture_id != arm_pose:
+                scores.pop(gesture_id, None)
         # Track the palm for swipe detection. A large jump means the dominant
         # hand changed (e.g. a second hand came up), not a swipe - start over.
         palm_x, palm_y = hand.px[9][0], hand.px[9][1]

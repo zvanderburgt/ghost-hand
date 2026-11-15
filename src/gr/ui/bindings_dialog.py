@@ -15,6 +15,7 @@ from .diagnostics_dialog import DiagnosticsDialog
 from .macros_dialog import MacrosDialog
 from .profiles_dialog import ProfilesDialog
 from .sounds_dialog import SoundsDialog
+from .tuning_dialog import TuningDialog
 
 CATEGORY_ORDER = ["Media", "System", "Apps", "Macros", "Sounds", "General"]
 UNIMPLEMENTED: set[str] = set()
@@ -121,6 +122,9 @@ class BindingsDialog(QDialog):
         check_btn = QPushButton("Check")
         check_btn.setToolTip("Look for conflicting or dangling bindings")
         check_btn.clicked.connect(self._open_check)
+        tuning_btn = QPushButton("Tuning…")
+        tuning_btn.setToolTip("Thresholds and per-gesture switches")
+        tuning_btn.clicked.connect(self._open_tuning)
         done = QPushButton("Done")
         done.setProperty("variant", "accent")
         done.clicked.connect(self.accept)
@@ -130,6 +134,7 @@ class BindingsDialog(QDialog):
         bottom.addWidget(custom_btn)
         bottom.addWidget(profiles_btn)
         bottom.addWidget(check_btn)
+        bottom.addWidget(tuning_btn)
         bottom.addStretch(1)
         bottom.addWidget(done)
         right.addLayout(bottom)
@@ -324,6 +329,12 @@ class BindingsDialog(QDialog):
         dialog.changed.connect(self._reload)
         dialog.exec()
         self._reload()
+
+    def _open_tuning(self) -> None:
+        dialog = TuningDialog(self.settings, self)
+        dialog.exec()
+        self._refresh_table()
+        self._load_gesture(self._gesture)
 
     def _reload(self) -> None:
         self._refresh_table()
