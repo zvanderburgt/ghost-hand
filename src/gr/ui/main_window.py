@@ -33,6 +33,18 @@ def to_qimage(bgr: np.ndarray) -> QImage:
     return QImage(rgb.data, w, h, 3 * w, QImage.Format_RGB888).copy()
 
 
+class UpdateWorker(QThread):
+    found = Signal(object)
+
+    def run(self) -> None:
+        from .. import __version__
+        from ..updater import check
+
+        release = check(__version__)
+        if release is not None:
+            self.found.emit(release)
+
+
 class CaptureWorker(QThread):
     frameReady = Signal(QImage)
     depthReady = Signal(QImage)
@@ -100,6 +112,8 @@ class CaptureWorker(QThread):
 
 
 class MainWindow(QMainWindow):
+    update_available = Signal(object)
+
     def __init__(self, settings: Settings, demo: bool = False) -> None:
         super().__init__()
         self.settings = settings
@@ -117,6 +131,22 @@ class MainWindow(QMainWindow):
         self._build()
         self._report_issues()
         self._start_worker()
+        self._check_updates()
+
+    def _check_updates(self) -> None:
+        self._update_release = None
+        if not bool(self.settings.get("ui.check_updates", True)):
+            return
+        self._update_worker = UpdateWorker(self)
+        self._update_worker.found.connect(self._on_update_found)
+        self._update_worker.start()
+
+    def _on_update_found(self, release) -> None:
+        self._update_release = release
+        self.log.add_line(
+            f"Update available: {release.version} — open the tray menu to get it"
+        )
+        self.update_available.emit(release)
 
     def _report_issues(self) -> None:
         issues = run_all(self.settings)

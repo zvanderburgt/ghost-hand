@@ -1,6 +1,6 @@
 # Ghost Hand
 
-![Ghost Hand](docs/screenshot.png)
+![Ghost Hand demo](docs/demo.gif)
 
 Control Windows with hand gestures in front of an Intel RealSense camera: media keys, app
 switching, a point-and-pinch cursor, macros, a soundboard, and per-app profiles. It lives in
@@ -111,6 +111,11 @@ to click.
   off the target you aimed at.
 - **Pinch hysteresis**: engages at `pinch_enter` (0.40), releases at `pinch_exit` (0.55),
   so a hand hovering at the boundary can't produce click chatter.
+- **Right-click** by pinching thumb to middle tip (it yields to the left pinch).
+- **Scroll** by holding the peace sign and moving your hand up or down; the pointer
+  freezes while you do.
+- **Dwell clicking** (`cursor.dwell_enabled`) clicks when the pointer stays still for
+  `dwell_ms`, for when pinching is unreliable.
 - **Tap vs drag**: a short pinch clicks; holding past `drag_hold_ms` (400 ms) presses and
   holds the left button until you release. A held drag is always released if your hand
   leaves the frame.
@@ -273,6 +278,35 @@ The **Profile** selector at the top of the Bindings window chooses which set you
 editing. The active profile is resolved from the focused window every 500 ms and the
 switch is logged (`Profile: Media (focused: spotify.exe)`).
 
+A profile can also match on **window title** (`title` in the config, or the optional
+field in Profiles…), which is how you give one app several profiles — for example
+`chrome.exe` + title `youtube` versus `chrome.exe` + title `gmail`.
+
+---
+
+## Tuning and switches
+
+**Bindings → Tuning…** (also in the tray) exposes what used to be JSON-only and applies
+changes immediately:
+
+- pose confidence, stability frames, hold-to-fire, action cooldown, auto-disarm
+- depth window (nearest/furthest hand)
+- swipe travel and cooldown
+- a checkbox per gesture, including learned ones and chords
+
+A gesture switched **off** cannot win, cannot fire and cannot form a chord. The arming
+pose is exempt so the app can never lock itself out. **Restore defaults** puts everything
+back.
+
+---
+
+## Update checks
+
+At startup the app asks GitHub for the latest release and compares it with its own
+version. If a newer one exists you get a tray notification and an
+**Update available** menu item; offline or rate-limited checks are silent.
+Turn it off with `ui.check_updates`.
+
 ---
 
 ## Calibrating the cursor
@@ -370,6 +404,12 @@ check runs at startup and summarises findings in the event log.
 | `cursor.pinch_enter` / `pinch_exit` | 0.40 / 0.55 | Click hysteresis thresholds |
 | `cursor.drag_hold_ms` | 400 | Hold past this to drag instead of click |
 | `cursor.click_cooldown_ms` | 320 | Minimum gap between pinch clicks |
+| `cursor.right_pinch_enter/exit` | 0.30 / 0.42 | Right-click hysteresis |
+| `cursor.scroll_step` | 0.02 | Hand travel per wheel notch |
+| `cursor.dwell_enabled` | `false` | Click by holding still |
+| `cursor.dwell_ms` / `dwell_radius_px` | 800 / 14 | Dwell timing and tolerance |
+| `ui.check_updates` | `true` | Look for newer releases at startup |
+| `disabled_gestures` | `[]` | Gesture ids that are switched off |
 | `engine.swipe_enabled` | `true` | Directional open-palm swipes |
 | `engine.swipe_pose` | `open_palm` | Pose required to start a swipe (`""` = any) |
 | `engine.swipe_min_distance` | 1.3 | Travel needed, in hand lengths |
@@ -425,3 +465,7 @@ The original roadmap is complete. Built on top of it since:
 
 Still open, if you want them later: per-gesture sensitivity tuning UI, a first-run
 setup flow, and an optional always-on-top overlay.
+
+Post-roadmap work is tracked in [docs/PLAN.md](docs/PLAN.md): tuning panel, per-gesture
+switches, cursor right-click/scroll/dwell, demo GIF, update check, window-title profiles
+and contributor scaffolding.

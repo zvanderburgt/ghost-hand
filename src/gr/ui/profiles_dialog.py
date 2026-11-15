@@ -76,9 +76,15 @@ class ProfilesDialog(QDialog):
         self.match_edit.setPlaceholderText("e.g. spotify.exe, vlc.exe  (comma separated, substring)")
         form.addWidget(self.match_edit)
 
+        form.addWidget(self._label("Window title contains (optional)"))
+        self.title_edit = QLineEdit()
+        self.title_edit.setPlaceholderText("e.g. YouTube — narrows a browser profile to one tab")
+        form.addWidget(self.title_edit)
+
         note = QLabel(
-            "Matching is case-insensitive substring on the focused window's process name. "
-            "Leave a profile selected here to edit its bindings in the Bindings window."
+            "Process matching is case-insensitive substring on the focused window's exe "
+            "name. A title rule lets one app have several profiles — leave it empty to "
+            "match the whole app."
         )
         note.setProperty("role", "sub")
         note.setWordWrap(True)
@@ -136,15 +142,17 @@ class ProfilesDialog(QDialog):
         item = self.list.currentItem()
         profile = self._current()
         is_default = item is None or item.data(Qt.UserRole) == "default"
-        for widget in (self.name_edit, self.match_edit, self.save_btn):
+        for widget in (self.name_edit, self.match_edit, self.title_edit, self.save_btn):
             widget.setEnabled(not is_default)
         self.delete_btn.setEnabled(not is_default)
         if profile is None:
             self.name_edit.setText("Default (all apps)")
             self.match_edit.setText("always active")
+            self.title_edit.setText("")
         else:
             self.name_edit.setText(profile.get("name", ""))
             self.match_edit.setText(profile.get("match", ""))
+            self.title_edit.setText(profile.get("title", ""))
 
     def _add(self) -> None:
         profile = self.settings.add_profile("New profile", "")
@@ -160,6 +168,11 @@ class ProfilesDialog(QDialog):
             return
         profile["name"] = self.name_edit.text().strip() or "Profile"
         profile["match"] = self.match_edit.text().strip()
+        title = self.title_edit.text().strip()
+        if title:
+            profile["title"] = title
+        else:
+            profile.pop("title", None)
         self._save_settings()
         current = profile.get("id")
         self._refresh()

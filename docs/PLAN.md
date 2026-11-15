@@ -41,27 +41,27 @@ Click by holding the pointer still, for people who find pinching unreliable.
 
 ## 5. Demo GIF
 
-- [ ] `scripts/make_demo.py` renders the demo source to `docs/demo.gif`
-- [ ] Referenced from the README
+- [x] `scripts/make_demo.py` renders the demo source to `docs/demo.gif`
+- [x] Referenced from the README
 - Acceptance: GIF is under ~5 MB and shows the skeleton with the gesture name.
 
 ## 6. Update check
 
-- [ ] Read the latest GitHub release, compare with the running version
-- [ ] Tray notification plus a menu item; silent when offline or up to date
-- [ ] `ui.check_updates` toggle
+- [x] Read the latest GitHub release, compare with the running version
+- [x] Tray notification plus a menu item; silent when offline or up to date
+- [x] `ui.check_updates` toggle
 - Acceptance: version comparison and release parsing covered offline.
 
 ## 7. Window-title profiles
 
-- [ ] Optional title substring on a profile, in addition to the process rule
-- [ ] `Ctrl+Alt+T`-style tabs (browser tabs) become distinguishable
+- [x] Optional title substring on a profile, in addition to the process rule
+- [x] `Ctrl+Alt+T`-style tabs (browser tabs) become distinguishable
 - Acceptance: process-only profiles behave exactly as before.
 
 ## 8. Contributor scaffolding
 
-- [ ] `CONTRIBUTING.md`: setup, checks, adding a gesture, releasing
-- [ ] Issue templates and PR template
+- [x] `CONTRIBUTING.md`: setup, checks, adding a gesture, releasing
+- [x] Issue templates and PR template
 - Acceptance: a newcomer can go from clone to green tests using only the docs.
 
 ## Out of scope

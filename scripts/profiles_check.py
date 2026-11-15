@@ -70,6 +70,33 @@ def main() -> int:
     check("deleted profile is gone", settings.profile_by_id(profile["id"]) is None)
     check("bindings still resolve after deletion", settings.binding_for("peace") == base_peace)
 
+    # ---- window title rules ---------------------------------------------- #
+    titled = [
+        {"id": "yt", "name": "YouTube", "match": "chrome.exe", "title": "youtube"},
+        {"id": "spotify", "name": "Spotify", "match": "spotify.exe"},
+    ]
+    check("title narrows a process profile",
+          profile_for(titled, "chrome.exe", "YouTube - Google Chrome") == "yt",
+          profile_for(titled, "chrome.exe", "YouTube - Google Chrome"))
+    check("same process, other title falls through",
+          profile_for(titled, "chrome.exe", "Gmail - Google Chrome") == "default",
+          profile_for(titled, "chrome.exe", "Gmail - Google Chrome"))
+    check("process-only profile still matches with a title",
+          profile_for(titled, "spotify.exe", "Spotify Premium") == "spotify",
+          str(profile_for(titled, "spotify.exe", "Spotify Premium")))
+    check("title matching is case-insensitive",
+          profile_for(titled, "chrome.exe", "YOUTUBE") == "yt")
+
+    title_only = [{"id": "news", "name": "News", "title": "reuters"}]
+    check("title-only profile matches any process",
+          profile_for(title_only, "firefox.exe", "Reuters - Firefox") == "news",
+          str(profile_for(title_only, "firefox.exe", "Reuters - Firefox")))
+    check("title-only profile ignores other titles",
+          profile_for(title_only, "firefox.exe", "Gmail") == "default")
+
+    check("empty profile never matches",
+          profile_for([{"id": "blank", "name": "Blank"}], "chrome.exe", "Anything") == "default")
+
     failures = 0
     for name, ok, detail in results:
         print(f"  {'PASS' if ok else 'FAIL'}  {name}{'  ' + detail if detail and not ok else ''}")

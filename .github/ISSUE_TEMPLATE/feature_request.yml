@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a gesture, action or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation rather than the implementation.
+      placeholder: I switch between a browser and a code editor all day and re-arming each time is awkward.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What did you have in mind?
+      placeholder: A per-app profile that stays armed while the editor is focused.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Gesture detection
+        - Cursor
+        - Bindings / profiles
+        - Macros
+        - Soundboard
+        - Packaging / install
+        - Documentation
+        - Something else
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you have tried instead?

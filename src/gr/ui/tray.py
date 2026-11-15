@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import webbrowser
+
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
@@ -30,6 +32,11 @@ class TrayIcon(QSystemTrayIcon):
         tuning_action = QAction("Tuning…", menu)
         tuning_action.triggered.connect(self.window.show_tuning)
         menu.addAction(tuning_action)
+
+        self.update_action = QAction("Update available", menu)
+        self.update_action.setVisible(False)
+        self.update_action.triggered.connect(self._open_update)
+        menu.addAction(self.update_action)
 
         menu.addSeparator()
 
@@ -99,3 +106,18 @@ class TrayIcon(QSystemTrayIcon):
         ok = autostart.set_enabled(on)
         if not ok:
             self.window.log.add_line("Could not update the Windows autostart entry")
+
+    def show_update(self, release) -> None:
+        self.update_action.setText(f"Update available: {release.version}")
+        self.update_action.setVisible(True)
+        self.showMessage(
+            APP_NAME,
+            f"Version {release.version} is available — see the release page.",
+            QSystemTrayIcon.Information,
+            6000,
+        )
+
+    def _open_update(self) -> None:
+        release = getattr(self.window, "_update_release", None)
+        if release is not None and release.url:
+            webbrowser.open(release.url)

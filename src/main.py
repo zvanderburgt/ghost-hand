@@ -53,6 +53,9 @@ def main() -> int:
     if QSystemTrayIcon.isSystemTrayAvailable():
         tray = TrayIcon(window)
         window.tray = tray
+        window.update_available.connect(tray.show_update)
+        if getattr(window, "_update_release", None) is not None:
+            tray.show_update(window._update_release)
 
     if args.screenshot:
         window.show()

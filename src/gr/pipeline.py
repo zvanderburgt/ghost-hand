@@ -20,7 +20,7 @@ from .custom import descriptor as shape_descriptor
 from .draw import draw_depth_preview, draw_hand, draw_hud
 from .gestures import EngineState, GestureEngine
 from .hands import HandTracker
-from .profiles import foreground_process_name, profile_for
+from .profiles import foreground_window, profile_for
 from .recorder import ClipRecorder
 from .synthetic import demo_frame
 
@@ -278,8 +278,8 @@ class VisionPipeline:
     # ------------------------------------------------------------------ #
 
     def _update_profile(self) -> None:
-        process = foreground_process_name()
-        matched = profile_for(self.s.profiles, process)
+        process, title = foreground_window()
+        matched = profile_for(self.s.profiles, process, title)
         if matched == (self.s.active_profile or "default"):
             return
         self.s.active_profile = matched

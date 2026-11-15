@@ -1,0 +1,66 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The event log and your settings usually explain
+        most problems, so please include them.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did the app do instead?
+      placeholder: Holding a thumbs-up should lower the volume, but it fires Play/Pause.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Arm with the rock sign
+        2. Hold a thumbs-up
+        3. Watch the event log
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag, or "source" if you ran from a clone.
+      placeholder: v0.6.0
+    validations:
+      required: true
+
+  - type: input
+    id: camera
+    attributes:
+      label: Camera
+      placeholder: Intel RealSense D435 / another webcam / no camera (--demo)
+
+  - type: textarea
+    id: event-log
+    attributes:
+      label: Event log
+      description: Copy the lines from the app's Event log panel.
+      render: text
+
+  - type: textarea
+    id: settings
+    attributes:
+      label: Relevant settings
+      description: If it is a binding or detection problem, paste the matching part of config/settings.json.
+      render: json
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before posting
+      options:
+        - label: I tried the checks in Bindings → Check and Tuning
+        - label: I searched existing issues
