@@ -67,8 +67,7 @@ Pushing a tag like `v0.6.0` makes GitHub Actions build and attach that zip autom
 | --- | --- | --- |
 | Rock sign (hold ~0.5 s) | *arm* | Index + pinky up. Deliberate, so it rarely triggers by accident. Auto-disarms after 6 s without a hand. |
 | V sign | Play / Pause | |
-| Thumbs up (hold) | Volume up | Ramps while held, ~2% every 110 ms. |
-| Thumbs down (hold) | Volume down | Same ramp, downward. |
+| Thumbs up / down | *unbound* | Volume moved to the dial — give them any action you like |
 | Fist + thumb left | Previous track | |
 | Fist + thumb right | Next track | |
 | Index up | Mute | |

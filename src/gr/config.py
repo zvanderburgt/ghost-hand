@@ -233,8 +233,6 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     },
     "bindings": [
         {"gesture": "peace", "action": "media.play_pause"},
-        {"gesture": "thumbs_up", "action": "media.volume_up"},
-        {"gesture": "thumbs_down", "action": "media.volume_down"},
         {"gesture": "thumb_left", "action": "media.prev"},
         {"gesture": "thumb_right", "action": "media.next"},
         {"gesture": "point_up", "action": "media.mute"},

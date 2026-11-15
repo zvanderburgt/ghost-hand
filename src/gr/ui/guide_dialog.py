@@ -13,15 +13,29 @@ TITLE = f"How {APP_NAME} works"
 
 
 def _pages(settings: Settings) -> list[tuple[str, str]]:
-    arm_pose = settings.gesture_label(settings.get("engine.arm_pose", "rock"))
-    gesture_rows = "".join(
-        f"<tr><td style='padding:3px 14px 3px 0;color:{theme.ACCENT};'>"
-        f"{settings.gesture_label(gid)}</td>"
-        f"<td style='padding:3px 0;color:{theme.TEXT_MUTED};'>"
-        f"{settings.action_label(settings.binding_for(gid)) if settings.binding_for(gid) else 'unbound'}"
-        f"</td></tr>"
-        for gid in ("peace", "thumbs_up", "thumbs_down", "thumb_left", "thumb_right",
-                    "point_up", "swipe_left", "swipe_right")
+    arm_id = str(settings.get("engine.arm_pose", "rock"))
+    arm_pose = settings.gesture_label(arm_id)
+
+    # Only list gestures that are actually bound, so the guide never shows rows
+    # that do nothing.
+    rows: list[str] = []
+    for gesture_id, meta in GESTURES.items():
+        if gesture_id == arm_id:
+            continue
+        action = settings.binding_for(gesture_id)
+        if not action:
+            continue
+        rows.append(
+            f"<tr><td style='padding:3px 14px 3px 0;color:{theme.ACCENT};'>"
+            f"{meta['name']}</td>"
+            f"<td style='padding:3px 0;color:{theme.TEXT_MUTED};'>"
+            f"{settings.action_label(action)}</td></tr>"
+        )
+        if len(rows) >= 7:
+            break
+    gesture_rows = "".join(rows) or (
+        f"<tr><td style='padding:3px 0;color:{theme.TEXT_MUTED};'>"
+        f"nothing bound yet — open Bindings</td></tr>"
     )
 
     return [
@@ -50,15 +64,16 @@ def _pages(settings: Settings) -> list[tuple[str, str]]:
         """),
         ("Your gestures", f"""
             <p>Defaults, all remappable in <b>Bindings</b>:</p>
-            <table style="border-collapse:collapse;">
-              <tr><td style='padding:3px 14px 3px 0;color:{theme.ACCENT};'>Rock Sign</td>
-                  <td style='padding:3px 0;color:{theme.TEXT_MUTED};'>arm / disarm</td></tr>
-              {gesture_rows}
-            </table>
-            <p style="margin-top:10px;">Plus motion gestures: pinch thumb and index and
-            <b>rotate your wrist</b> for a volume dial, hold <b>both hands</b> in a
-            configured pair for a chord, and record your own shapes under
-            <b>Bindings → Custom…</b>.</p>
+            <table style="border-collapse:collapse;">{gesture_rows}</table>
+            <p style="margin-top:16px;"><b>Volume is the dial, not a button.</b> Pinch your
+            thumb and index together like grabbing a small knob, then rotate your wrist —
+            clockwise is louder, counter-clockwise quieter. It is continuous, so you can
+            nudge it by a percent or sweep it across the whole range. Coarseness is
+            adjustable in Bindings.</p>
+            <p>Thumbs up and thumbs down are left unbound on purpose. Give them whatever you
+            like — or map one back to Volume Up/Down and it will ramp while you hold it.</p>
+            <p>Other motion gestures: swipes with an open palm, two-hand chords, and your own
+            shapes under <b>Bindings → Custom…</b>.</p>
         """),
         ("Practice vs live", f"""
             <p>The <b>Practice</b> switch is on by default. In practice mode the app logs
