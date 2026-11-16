@@ -19,7 +19,7 @@ binaries = []
 hiddenimports = []
 
 # These ship native DLLs or data files that PyInstaller's static analysis misses.
-for package in ("mediapipe", "soundfile", "sounddevice", "pyrealsense2"):
+for package in ("mediapipe", "soundfile", "sounddevice", "pyrealsense2", "pycaw"):
     pkg_datas, pkg_binaries, pkg_hidden = collect_all(package)
     datas += pkg_datas
     binaries += pkg_binaries

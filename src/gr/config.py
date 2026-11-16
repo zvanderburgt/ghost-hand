@@ -124,6 +124,9 @@ ACTIONS: dict[str, dict[str, Any]] = {
     "media.mute": {"name": "Mute", "category": "Media"},
     "media.volume_up": {"name": "Volume Up", "category": "Media"},
     "media.volume_down": {"name": "Volume Down", "category": "Media"},
+    "audio.app_up": {"name": "App Volume Up", "category": "Audio"},
+    "audio.app_down": {"name": "App Volume Down", "category": "Audio"},
+    "audio.app_mute": {"name": "Toggle App Mute", "category": "Audio"},
     "system.copy": {"name": "Copy", "category": "System"},
     "system.paste": {"name": "Paste", "category": "System"},
     "system.undo": {"name": "Undo", "category": "System"},
@@ -135,6 +138,28 @@ ACTIONS: dict[str, dict[str, Any]] = {
     "system.lock": {"name": "Lock Screen", "category": "System"},
     "app.launch": {"name": "Launch App...", "category": "Apps"},
 }
+
+# Actions that need a process name in the binding's ``target`` field.
+APP_AUDIO_ACTIONS = frozenset({"audio.app_up", "audio.app_down", "audio.app_mute"})
+
+
+def app_name(rule: str | None) -> str:
+    """Human label for a process rule: ``spotify.exe`` -> ``Spotify``."""
+    tokens = [
+        token.strip()
+        for token in str(rule or "").replace(";", ",").replace("|", ",").split(",")
+        if token.strip()
+    ]
+    if not tokens:
+        return ""
+    first = tokens[0]
+    if first.lower().endswith(".exe"):
+        first = first[:-4]
+    first = first.replace("_", " ").replace("-", " ").strip()
+    label = first[:1].upper() + first[1:]
+    if len(tokens) > 1:
+        label += f" +{len(tokens) - 1}"
+    return label
 
 
 DEFAULT_SETTINGS: dict[str, Any] = {
@@ -170,6 +195,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "dial_enabled": True,          # pinch-and-rotate volume dial
         "dial_degrees_per_step": 6.0,   # wrist rotation per volume tick
         "dial_invert": False,
+        "dial_target": "system",       # "system" | "foreground" | a process rule
+        "app_volume_step": 2,          # percent per app-volume tick
         "swipe_enabled": True,
         "swipe_pose": "open_palm",     # pose required to start a swipe ("" = any)
         "swipe_window_ms": 320,
@@ -385,7 +412,7 @@ class Settings:
         if self.active_profile == profile_id:
             self.active_profile = "default"
 
-    def action_label(self, action_id: str | None) -> str:
+    def action_label(self, action_id: str | None, target: str | None = None) -> str:
         if not action_id:
             return "Unmapped"
         if action_id.startswith("macro.play:"):
@@ -394,7 +421,11 @@ class Settings:
         if action_id.startswith("sound.play:"):
             sound = self.sound(action_id.split(":", 1)[1])
             return f"Sound: {sound['name']}" if sound else "Missing sound"
-        return ACTIONS.get(action_id, {}).get("name", action_id)
+        name = ACTIONS.get(action_id, {}).get("name", action_id)
+        if action_id in APP_AUDIO_ACTIONS:
+            app = app_name(target)
+            return f"{app} — {name}" if app else f"{name} (no app)"
+        return name
 
     # -- macros ----------------------------------------------------------- #
 

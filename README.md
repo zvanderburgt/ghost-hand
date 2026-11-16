@@ -3,7 +3,8 @@
 ![Ghost Hand demo](docs/demo.gif)
 
 Control Windows with hand gestures in front of an Intel RealSense camera: media keys, app
-switching, a point-and-pinch cursor, macros, a soundboard, and per-app profiles. It lives in
+switching, a point-and-pinch cursor, macros, a soundboard, per-app volume, and per-app
+profiles. It lives in
 the tray with a live preview of exactly what the camera sees and what the classifier thinks.
 The icon is the same 21-landmark skeleton the app tracks.
 
@@ -48,6 +49,7 @@ Useful developer entry points:
 .venv\Scripts\python.exe scripts\doctor.py                       :: why can't it see the camera?
 .venv\Scripts\python.exe scripts\probe.py --frames 120 --save     :: headless detection test
 .venv\Scripts\python.exe scripts\pose_check.py                    :: classifier sanity check
+.venv\Scripts\python.exe src\main.py --audio-probe                :: app-volume session check
 ```
 
 Build the portable zip that releases are made from:
@@ -71,7 +73,7 @@ Pushing a tag like `v0.6.0` makes GitHub Actions build and attach that zip autom
 | Fist + thumb left | Previous track | |
 | Fist + thumb right | Next track | |
 | Index up | Mute | |
-| Pinch thumb+index, rotate wrist | Volume dial | Continuous; tunable in Bindings |
+| Pinch thumb+index, rotate wrist | Volume dial | Continuous; system or one app (e.g. Spotify), tunable in Bindings |
 | Open palm swipe (←/→/↑/↓) | *unbound* | Motion gesture; bind it in Bindings |
 
 Also implemented but unbound: fist, three fingers, OK sign.
@@ -83,6 +85,27 @@ out by itself. Turn it off with `ui.armed_toast`.
 
 Rebind later by editing `config/settings.json` (`bindings` array) — or use the in-app
 **Bindings** editor, which also holds the volume-dial tuning.
+
+---
+
+## Per-app volume
+
+The volume dial normally changes Windows' master volume. Under **Bindings → Volume
+dial → Controls**, point it at one running app instead — `Spotify.exe` is the obvious
+one — and the dial changes only that app's Windows volume while everything else stays
+where it is. **Focused app** follows whichever window is in front.
+
+Bindings can also use **App Volume Up**, **App Volume Down** and **Toggle App Mute**.
+Pick the process when you choose the action; the binding row then reads, for example,
+`Spotify — App Volume Up`.
+
+**Mixer…** in the Volume dial card opens a live mixer: every app with an audio session
+gets a volume slider, a mute toggle and a **Use for dial** button.
+
+This uses WASAPI session volume, the same slider as the Windows Volume Mixer, so it
+works offline and needs no Spotify account. It controls audio on this PC: Spotify
+Connect to a phone or speaker, and Spotify in a browser, are separate sessions.
+Windows cannot isolate a single browser tab.
 
 ---
 

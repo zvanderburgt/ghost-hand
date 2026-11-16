@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
+from .app_audio import AppAudio
 from .config import ACTIONS, Settings
 from .macros import MacroPlayer
 from .soundboard import SoundBoard
@@ -124,44 +125,65 @@ class ActionBus:
         "media.volume_down": VK_VOLUME_DOWN,
     }
 
-    def __init__(self, settings: Settings, log: Callable[[str], None] | None = None) -> None:
+    def __init__(self, settings: Settings, log: Callable[[str], None] | None = None,
+                 app_audio: AppAudio | None = None) -> None:
         self.s = settings
         self.log = log or (lambda _msg: None)
         self.macro_player = MacroPlayer()
         self.soundboard = SoundBoard(settings, log=self.log)
+        self.app_audio = app_audio or AppAudio()
         self.dry_run = False           # demo mode: log actions, never send input
 
     @property
     def practice(self) -> bool:
         return bool(self.s.get("safety.practice_mode", True))
 
-    def label(self, action_id: str) -> str:
-        return self.s.action_label(action_id)
+    def label(self, action_id: str, target: str | None = None) -> str:
+        return self.s.action_label(action_id, target)
 
-    def fire(self, action_id: str, target: str | None = None) -> ActionResult:
+    def fire(self, action_id: str, target: str | None = None,
+             repeat: int = 1) -> ActionResult:
         if action_id in ("", "none", None):
             return ActionResult(False, "No action bound", action_id or "")
 
-        name = self.label(action_id)
+        repeat = max(1, min(10, int(repeat)))
+        name = self.label(action_id, target)
         if self.practice or self.dry_run:
-            msg = f"Practice: would run «{name}»"
+            suffix = f" ×{repeat}" if repeat > 1 else ""
+            msg = f"Practice: would run «{name}»{suffix}"
             self.log(msg)
             return ActionResult(True, msg, action_id)
 
         try:
-            self._execute(action_id, target)
+            self._execute(action_id, target, repeat)
         except Exception as exc:  # noqa: BLE001 - surface anything to the log
             msg = f"Action failed: {name} ({exc})"
             self.log(msg)
             return ActionResult(False, msg, action_id)
 
-        msg = f"Ran «{name}»"
+        msg = f"Ran «{name}»" + (f" ×{repeat}" if repeat > 1 else "")
         self.log(msg)
         return ActionResult(True, msg, action_id)
 
-    def _execute(self, action_id: str, target: str | None = None) -> None:
+    def _execute(self, action_id: str, target: str | None = None,
+                 repeat: int = 1) -> None:
         if action_id in self.MEDIA:
-            tap(self.MEDIA[action_id])
+            for _ in range(repeat):
+                tap(self.MEDIA[action_id])
+            return
+
+        if action_id in ("audio.app_up", "audio.app_down"):
+            if not target:
+                raise RuntimeError("No app chosen for this binding")
+            step = max(0.5, float(self.s.get("engine.app_volume_step", 2))) / 100.0
+            delta = step * repeat
+            self.app_audio.adjust(target, delta if action_id.endswith("up") else -delta)
+            return
+
+        if action_id == "audio.app_mute":
+            if not target:
+                raise RuntimeError("No app chosen for this binding")
+            self.app_audio.toggle_mute(target)
             return
 
         simple = {

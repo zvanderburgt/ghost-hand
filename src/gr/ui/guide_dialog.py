@@ -25,11 +25,12 @@ def _pages(settings: Settings) -> list[tuple[str, str]]:
         action = settings.binding_for(gesture_id)
         if not action:
             continue
+        target = settings.binding_target(gesture_id)
         rows.append(
             f"<tr><td style='padding:3px 14px 3px 0;color:{theme.ACCENT};'>"
             f"{meta['name']}</td>"
             f"<td style='padding:3px 0;color:{theme.TEXT_MUTED};'>"
-            f"{settings.action_label(action)}</td></tr>"
+            f"{settings.action_label(action, target)}</td></tr>"
         )
         if len(rows) >= 7:
             break
@@ -70,6 +71,11 @@ def _pages(settings: Settings) -> list[tuple[str, str]]:
             clockwise is louder, counter-clockwise quieter. It is continuous, so you can
             nudge it by a percent or sweep it across the whole range. Coarseness is
             adjustable in Bindings.</p>
+            <p>By default the dial changes system volume. Under <b>Bindings → Volume
+            dial</b> you can point it at one app instead — Spotify, for example — and
+            it changes only that app's Windows volume while other audio stays put.
+            <b>Mixer…</b> in that card shows every app's slider and a one-click
+            <b>Use for dial</b> button.</p>
             <p>Thumbs up and thumbs down are left unbound on purpose. Give them whatever you
             like — or map one back to Volume Up/Down and it will ramp while you hold it.</p>
             <p>Other motion gestures: swipes with an open palm, two-hand chords, and your own

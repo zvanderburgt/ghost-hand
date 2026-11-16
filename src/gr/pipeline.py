@@ -13,14 +13,15 @@ import cv2
 import numpy as np
 
 from .actions import ActionBus
+from .app_audio import FOREGROUND_TARGET, dial_target
 from .camera import Frame, RealSenseCamera
-from .config import Settings
+from .config import Settings, app_name
 from .cursor import CursorController
 from .custom import descriptor as shape_descriptor
 from .draw import draw_depth_preview, draw_hand, draw_hud
 from .gestures import EngineState, GestureEngine
 from .hands import HandTracker
-from .profiles import foreground_window, profile_for
+from .profiles import foreground_process_name, foreground_window, profile_for
 from .recorder import ClipRecorder
 from .synthetic import demo_frame
 
@@ -34,6 +35,7 @@ class StepResult:
     inference_ms: float
     events: list[str] = field(default_factory=list)
     fired: list[tuple[str, str]] = field(default_factory=list)  # (gesture, action)
+    dial_target: str = ""                  # display name of the app the dial controls
 
 
 class VisionPipeline:
@@ -56,12 +58,16 @@ class VisionPipeline:
         self._last_ramp_log = 0.0
         self._was_ramp = False
         self._was_dragging = False
+        self._dial_process: str | None = None
         self.bus = ActionBus(settings, log=self._log)
         self.bus.dry_run = demo
         self.cursor = CursorController(settings)
         self.latest_descriptor = None
         self.latest_pointer = None
         self.latest_distance = None
+        # Set while a modal dialog needs the pointer left alone (calibration):
+        # tracking keeps running, but the cursor neither moves nor clicks.
+        self.cursor_suspended = False
         self._last_profile_poll = 0.0
 
     # ------------------------------------------------------------------ #
@@ -170,7 +176,13 @@ class VisionPipeline:
             self._had_hand = has_hand
 
         # ---- pointer ------------------------------------------------- #
-        if state.pointer is not None or state.pointer_scroll_mode:
+        if self.cursor_suspended:
+            # A dialog owns the pointer right now (and we must not click its
+            # buttons from a stray pinch). Reset releases any held drag and
+            # clears the filter so the pointer doesn't jump when we resume.
+            self.cursor.reset()
+            self._was_dragging = False
+        elif state.pointer is not None or state.pointer_scroll_mode:
             pointer_x = state.pointer[0] if state.pointer else 0.5
             pointer_y = state.pointer[1] if state.pointer else state.pointer_scroll_y
             info = self.cursor.update(
@@ -191,10 +203,12 @@ class VisionPipeline:
 
         for gesture in state.fired:
             action = self.s.binding_for(gesture)
-            result = self.bus.fire(action or "none", self.s.binding_target(gesture))
+            target = self.s.binding_target(gesture)
+            result = self.bus.fire(action or "none", target)
             fired.append((gesture, action or "none"))
             events.append(
-                f"FIRED {self.s.gesture_label(gesture)} → {self.s.action_label(action)}"
+                f"FIRED {self.s.gesture_label(gesture)} → "
+                f"{self.s.action_label(action, target)}"
             )
             if result.message:
                 events.append(result.message)
@@ -204,12 +218,20 @@ class VisionPipeline:
             gesture = state.stable_label
             action = self.s.binding_for(gesture) if gesture else None
             if action:
-                for _ in range(min(ticks, 5)):
-                    self.bus.fire(action, self.s.binding_target(gesture))
+                target = self.s.binding_target(gesture)
+                self.bus.fire(action, target, repeat=min(ticks, 5))
                 now_s = time.perf_counter()
                 if now_s - self._last_ramp_log >= 0.3:
                     self._last_ramp_log = now_s
-                    events.append(f"Ramp → {self.s.action_label(action)}")
+                    events.append(f"Ramp → {self.s.action_label(action, target)}")
+
+        # Lock the dial to one target for the whole turn. Re-resolving mid-turn
+        # would make the volume jump between apps when focus changes.
+        if state.dial_active and not self._was_dial:
+            setting = str(self.s.get("engine.dial_target", "system") or "system")
+            foreground = foreground_process_name() if setting == FOREGROUND_TARGET else ""
+            self._dial_process = dial_target(setting, foreground)
+
         self._was_ramp = state.ramp_active
 
         if state.dial_active != self._was_dial:
@@ -222,13 +244,19 @@ class VisionPipeline:
 
         dial_ticks = self.engine.take_dial_ticks()
         if dial_ticks:
-            action = "media.volume_up" if dial_ticks > 0 else "media.volume_down"
-            for _ in range(min(abs(dial_ticks), 5)):
-                self.bus.fire(action)
+            count = min(abs(dial_ticks), 5)
+            if self._dial_process:
+                action = "audio.app_up" if dial_ticks > 0 else "audio.app_down"
+                target = self._dial_process
+            else:
+                action = "media.volume_up" if dial_ticks > 0 else "media.volume_down"
+                target = None
+            result = self.bus.fire(action, target, repeat=count)
             now_s = time.perf_counter()
-            if now_s - self._last_dial_log >= 0.25:
+            if result.ok and now_s - self._last_dial_log >= 0.25:
                 self._last_dial_log = now_s
-                events.append(f"Dial → volume {'up' if dial_ticks > 0 else 'down'}")
+                where = f"{app_name(target)} volume" if target else "volume"
+                events.append(f"Dial → {where} {'up' if dial_ticks > 0 else 'down'}")
 
         # Surface genuine failures (but not the practice-mode echo of every tick).
         pending = self.events[self._log_cursor:]
@@ -273,6 +301,7 @@ class VisionPipeline:
             inference_ms=0.0 if self.demo else self.tracker.inference_ms,
             events=events,
             fired=fired,
+            dial_target=app_name(self._dial_process) if self._dial_process else "",
         )
 
     # ------------------------------------------------------------------ #

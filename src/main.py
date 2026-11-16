@@ -16,11 +16,49 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from PySide6.QtCore import QTimer, Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon  # noqa: E402
 
-from gr.config import APP_NAME, SETTINGS_PATH, Settings  # noqa: E402
+from gr.config import APP_NAME, DEBUG_DIR, SETTINGS_PATH, Settings  # noqa: E402
 from gr.ui import theme  # noqa: E402
 from gr.ui.icon import app_icon  # noqa: E402
 from gr.ui.main_window import MainWindow  # noqa: E402
 from gr.ui.tray import TrayIcon  # noqa: E402
+
+
+def audio_probe() -> int:
+    """Frozen-build check for pycaw and the WASAPI session path."""
+    from gr.app_audio import AppAudio
+
+    lines: list[str] = []
+    code = 0
+    try:
+        audio = AppAudio()
+        apps = audio.apps()
+        lines.append(f"{len(apps)} audio session(s)")
+        for app in apps:
+            lines.append(
+                f"{app.process}  vol={app.volume:.2f} mute={app.muted} "
+                f"sessions={app.sessions}"
+            )
+        spotify = next(
+            (app for app in apps if app.process.lower() == "spotify.exe"), None
+        )
+        if spotify:
+            before = spotify.volume
+            after = audio.adjust("spotify.exe", -0.01)
+            audio.set_volume("spotify.exe", before)
+            restored = audio.get_volume("spotify.exe")
+            lines.append(
+                f"spotify round-trip {before:.2f} -> {after:.2f} -> {restored:.2f}"
+            )
+    except Exception as exc:  # noqa: BLE001 - the probe reports, never raises
+        lines.append(f"audio probe failed: {exc}")
+        code = 1
+
+    try:
+        DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+        (DEBUG_DIR / "audio-probe.txt").write_text("\n".join(lines), encoding="utf-8")
+    except OSError:
+        pass
+    return code
 
 
 def main() -> int:
@@ -31,7 +69,12 @@ def main() -> int:
     ap.add_argument("--screenshot-delay", type=int, default=2600)
     ap.add_argument("--quit-after", type=int, default=0,
                     help="dev: quit cleanly after N milliseconds")
+    ap.add_argument("--audio-probe", action="store_true",
+                    help="dev: list app audio sessions and exit")
     args = ap.parse_args()
+
+    if args.audio_probe:
+        return audio_probe()
 
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)

@@ -18,11 +18,12 @@ from gr.gestures import GestureEngine  # noqa: E402
 from gr.synthetic import make_hand  # noqa: E402
 
 
-def hold(gesture: str, binding: str | None, seconds: float = 1.2):
+def hold(gesture: str, binding: str | None, target: str | None = None,
+         seconds: float = 1.2):
     settings = Settings()
     settings.set("engine.fire_hold_ms", 400)
     settings.set("engine.volume_hold_ms", 300)
-    settings.set_binding(gesture, binding)
+    settings.set_binding(gesture, binding, target)
 
     engine = GestureEngine(settings)
     t = 1000.0
@@ -44,18 +45,21 @@ def hold(gesture: str, binding: str | None, seconds: float = 1.2):
 
 
 CASES = [
-    ("thumbs up -> system.copy (no ramp expected)", "thumbs_up", "system.copy", 0, 1),
-    ("thumbs up -> volume_up (ramp expected)", "thumbs_up", "media.volume_up", 1, 0),
-    ("thumbs down -> volume_down (ramp expected)", "thumbs_down", "media.volume_down", 1, 0),
-    ("thumbs up -> unbound (nothing expected)", "thumbs_up", None, 0, 0),
-    ("V sign -> play_pause (single shot)", "peace", "media.play_pause", 0, 1),
+    ("thumbs up -> system.copy (no ramp expected)", "thumbs_up", "system.copy", None, 0, 1),
+    ("thumbs up -> volume_up (ramp expected)", "thumbs_up", "media.volume_up", None, 1, 0),
+    ("thumbs down -> volume_down (ramp expected)", "thumbs_down", "media.volume_down", None, 1, 0),
+    ("thumbs up -> app volume up (ramp expected)", "thumbs_up", "audio.app_up", "spotify.exe", 1, 0),
+    ("thumbs up -> app volume up, no app (no ramp)", "thumbs_up", "audio.app_up", None, 0, 0),
+    ("thumbs down -> app volume down (ramp expected)", "thumbs_down", "audio.app_down", "spotify.exe", 1, 0),
+    ("thumbs up -> unbound (nothing expected)", "thumbs_up", None, None, 0, 0),
+    ("V sign -> play_pause (single shot)", "peace", "media.play_pause", None, 0, 1),
 ]
 
 
 def main() -> int:
     failures = 0
-    for desc, gesture, binding, want_ticks, want_fires in CASES:
-        ticks, fired, ramped = hold(gesture, binding)
+    for desc, gesture, binding, target, want_ticks, want_fires in CASES:
+        ticks, fired, ramped = hold(gesture, binding, target)
         got_ticks = 1 if ticks > 0 else 0
         ok = got_ticks == want_ticks and len(fired) == want_fires
         status = "PASS" if ok else "FAIL"

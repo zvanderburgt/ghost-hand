@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFileDialog, QFrame,
-                               QGridLayout, QHBoxLayout, QHeaderView, QLabel,
-                               QPushButton, QScrollArea, QSlider, QTableWidget,
-                               QTableWidgetItem, QVBoxLayout, QWidget)
+                               QGridLayout, QHBoxLayout, QHeaderView, QInputDialog,
+                               QLabel, QMessageBox, QPushButton, QScrollArea,
+                               QSlider, QTableWidget, QTableWidgetItem, QVBoxLayout,
+                               QWidget)
 
-from ..config import GESTURES, Settings, available_actions, available_gestures
+from ..app_audio import AppAudio, AppAudioError
+from ..config import (APP_AUDIO_ACTIONS, GESTURES, Settings, available_actions,
+                      available_gestures)
 from . import theme
+from .audio_dialog import AudioDialog
 from .custom_dialog import CustomGesturesDialog
 from .diagnostics_dialog import DiagnosticsDialog
 from .macros_dialog import MacrosDialog
@@ -17,7 +21,7 @@ from .profiles_dialog import ProfilesDialog
 from .sounds_dialog import SoundsDialog
 from .tuning_dialog import TuningDialog
 
-CATEGORY_ORDER = ["Media", "System", "Apps", "Macros", "Sounds", "General"]
+CATEGORY_ORDER = ["Media", "Audio", "System", "Apps", "Macros", "Sounds", "General"]
 UNIMPLEMENTED: set[str] = set()
 
 
@@ -151,21 +155,36 @@ class BindingsDialog(QDialog):
         head = QHBoxLayout()
         label = QLabel("Volume dial")
         label.setProperty("role", "h2")
+        mixer = QPushButton("Mixer…")
+        mixer.setToolTip("Live app volumes and the dial target")
+        mixer.clicked.connect(self._open_audio)
         self.dial_enabled = QCheckBox("Enable")
         self.dial_enabled.setChecked(bool(self.settings.get("engine.dial_enabled", True)))
         self.dial_enabled.toggled.connect(self._on_dial_check)
         head.addWidget(label)
+        head.addWidget(mixer)
         head.addStretch(1)
         head.addWidget(self.dial_enabled)
         lay.addLayout(head)
 
         hint = QLabel(
             "Pinch thumb and index together like grabbing a knob, then rotate your "
-            "wrist. Smaller values give finer control."
+            "wrist. Smaller values give finer control. Point it at one app to change "
+            "that app's Windows volume instead of the system volume."
         )
         hint.setProperty("role", "sub")
         hint.setWordWrap(True)
         lay.addWidget(hint)
+
+        target_row = QHBoxLayout()
+        target_row.setSpacing(10)
+        target_label = QLabel("Controls")
+        target_label.setProperty("role", "sub")
+        self.dial_target = QComboBox()
+        self.dial_target.currentIndexChanged.connect(self._on_dial_target)
+        target_row.addWidget(target_label)
+        target_row.addWidget(self.dial_target, 1)
+        lay.addLayout(target_row)
 
         row = QHBoxLayout()
         row.setSpacing(10)
@@ -189,6 +208,7 @@ class BindingsDialog(QDialog):
         row.addWidget(self.dial_value)
         row.addWidget(self.invert)
         lay.addLayout(row)
+        self._populate_dial_targets()
         return box
 
     # ------------------------------------------------------------------ #
@@ -201,7 +221,8 @@ class BindingsDialog(QDialog):
             gesture_item = QTableWidgetItem(meta["name"])
             gesture_item.setData(Qt.UserRole, gid)
             action = self.settings.binding_for(gid, self._editing_profile)
-            label = self.settings.action_label(action) if action else "— unbound —"
+            target = self.settings.binding_target(gid, self._editing_profile)
+            label = self.settings.action_label(action, target) if action else "— unbound —"
             self.table.setItem(row, 0, gesture_item)
             self.table.setItem(row, 1, QTableWidgetItem(label))
         self.table.blockSignals(False)
@@ -248,6 +269,7 @@ class BindingsDialog(QDialog):
         layout.setSpacing(8)
 
         current = self.settings.binding_for(gesture, self._editing_profile)
+        current_target = self.settings.binding_target(gesture, self._editing_profile)
         actions = available_actions(self.settings)
         for category in CATEGORY_ORDER:
             items = [(aid, ameta) for aid, ameta in actions.items()
@@ -277,6 +299,15 @@ class BindingsDialog(QDialog):
                 grid.addWidget(button, index // 2, index % 2)
             layout.addLayout(grid)
 
+        if current in APP_AUDIO_ACTIONS:
+            note = QLabel(
+                f"Controlling: {current_target}" if current_target
+                else "No app chosen yet — pick one of the App Volume actions above."
+            )
+            note.setProperty("role", "sub")
+            note.setWordWrap(True)
+            layout.addWidget(note)
+
         layout.addStretch(1)
         self.scroll.setWidget(host)
 
@@ -292,6 +323,13 @@ class BindingsDialog(QDialog):
             if not path:
                 return
             target = path
+        elif action_id in APP_AUDIO_ACTIONS:
+            current = self.settings.binding_target(
+                self._gesture, self._editing_profile
+            ) or ""
+            target = self._pick_audio_app("App volume", current)
+            if target is None:
+                return
         self.settings.set_binding(self._gesture, action_id, target,
                                    profile_id=self._editing_profile)
         self._save()
@@ -365,6 +403,84 @@ class BindingsDialog(QDialog):
         self._refresh_profiles()
         self._refresh_table()
         self._load_gesture(self._gesture)
+
+    def _open_audio(self) -> None:
+        dialog = AudioDialog(self.settings, self)
+        dialog.changed.connect(self._populate_dial_targets)
+        dialog.exec()
+        self._populate_dial_targets()
+
+    # -- app volume ------------------------------------------------------- #
+
+    def _pick_audio_app(self, title: str, current: str = "") -> str | None:
+        try:
+            apps = [app.process for app in AppAudio().apps()]
+        except AppAudioError as exc:
+            QMessageBox.warning(self, title, str(exc))
+            return None
+
+        items = sorted({*apps, current.strip()} - {""}, key=str.lower)
+        if not items:
+            items = ["spotify.exe"]
+        index = next(
+            (i for i, item in enumerate(items) if item.lower() == current.lower()),
+            0,
+        )
+        choice, ok = QInputDialog.getItem(
+            self, title, "App process (for example spotify.exe):",
+            items, index, True,
+        )
+        if not ok:
+            return None
+        choice = choice.strip()
+        return choice or None
+
+    def _populate_dial_targets(self) -> None:
+        current = str(self.settings.get("engine.dial_target", "system") or "system")
+        try:
+            apps = [app.process for app in AppAudio().apps()]
+        except AppAudioError:
+            apps = []
+
+        running = {app.lower() for app in apps}
+        if (
+            current.lower() not in ("", "system", "foreground")
+            and current.lower() not in running
+        ):
+            apps.insert(0, current)
+
+        self.dial_target.blockSignals(True)
+        self.dial_target.clear()
+        self.dial_target.addItem("System volume", "system")
+        self.dial_target.addItem("Focused app", "foreground")
+        for app in sorted(apps, key=str.lower):
+            suffix = "" if app.lower() in running else " (not running)"
+            self.dial_target.addItem(f"{app}{suffix}", app)
+        self.dial_target.addItem("Choose app…", "__choose__")
+
+        index = next(
+            (
+                i for i in range(self.dial_target.count())
+                if str(self.dial_target.itemData(i)).lower() == current.lower()
+            ),
+            0,
+        )
+        self.dial_target.setCurrentIndex(index)
+        self.dial_target.blockSignals(False)
+
+    def _on_dial_target(self, _index: int) -> None:
+        value = self.dial_target.currentData()
+        if value == "__choose__":
+            current = str(self.settings.get("engine.dial_target", "") or "")
+            target = self._pick_audio_app("Volume dial target", current)
+            if target:
+                self.settings.set("engine.dial_target", target)
+                self._save()
+            self._populate_dial_targets()
+            return
+        if value:
+            self.settings.set("engine.dial_target", value)
+            self._save()
 
     def _on_dial_value(self, value: int) -> None:
         self.settings.set("engine.dial_degrees_per_step", float(value))

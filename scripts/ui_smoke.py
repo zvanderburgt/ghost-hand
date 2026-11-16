@@ -1,4 +1,4 @@
-"""Render the bindings dialog to a PNG for a quick visual check.
+"""Render the dialogs to PNGs for a quick visual check.
 
     python scripts/ui_smoke.py
 """
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 from gr.config import DEBUG_DIR, Settings  # noqa: E402
 from gr.macros import new_macro  # noqa: E402
 from gr.ui import theme  # noqa: E402
+from gr.ui.audio_dialog import AudioDialog  # noqa: E402
 from gr.ui.bindings_dialog import BindingsDialog  # noqa: E402
 from gr.ui.custom_dialog import CustomGesturesDialog  # noqa: E402
 from gr.ui.guide_dialog import GuideDialog  # noqa: E402
@@ -74,6 +75,15 @@ def main() -> int:
     sounds.grab().save(str(out))
     print(f"saved {out}")
 
+    audio = AudioDialog(Settings())
+    audio.show()
+    app.processEvents()
+    audio.resize(700, 520)
+    app.processEvents()
+    out = DEBUG_DIR / "audio-dialog.png"
+    audio.grab().save(str(out))
+    print(f"saved {out}")
+
     custom = CustomGesturesDialog(sounds_settings)
     custom.show()
     app.processEvents()
@@ -101,7 +111,7 @@ def main() -> int:
     tuning.grab().save(str(out))
     print(f"saved {out}")
 
-    for dialog in (bindings, macros, sounds, custom, guide, tuning):
+    for dialog in (bindings, macros, sounds, audio, custom, guide, tuning):
         dialog.close()
         dialog.deleteLater()
     app.processEvents()

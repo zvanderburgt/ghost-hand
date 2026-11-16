@@ -41,7 +41,12 @@ THUMB_PROTRUSION_SPAN = 0.12    # full confidence at START + SPAN (0.17)
 FIST_THUMB_PENALTY = 0.9
 
 # Actions that repeat while the gesture is held instead of firing once.
-RAMP_ACTIONS = frozenset({"media.volume_up", "media.volume_down"})
+RAMP_ACTIONS = frozenset({
+    "media.volume_up",
+    "media.volume_down",
+    "audio.app_up",
+    "audio.app_down",
+})
 
 
 def _clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
@@ -632,12 +637,17 @@ class GestureEngine:
         # Only gestures bound to a repeatable action ramp, so removing the
         # volume binding genuinely stops the volume from changing.
         ramp_hold = float(self.s.get("engine.volume_hold_ms", 300))
+        ramp_allowed = bound_action in RAMP_ACTIONS
+        if ramp_allowed and bound_action.startswith("audio."):
+            # An app-volume binding without a target has nothing to ramp; the
+            # action would fail on every tick instead of firing once.
+            ramp_allowed = bool(self.s.binding_target(self.stable))
         self.ramp_active = bool(
             not dial_guard
             and self.armed
             and self.stable
             and state.pointer is None
-            and bound_action in RAMP_ACTIONS
+            and ramp_allowed
             and state.hold_ms >= ramp_hold
         )
 

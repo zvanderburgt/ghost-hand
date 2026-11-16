@@ -564,7 +564,13 @@ class MainWindow(QMainWindow):
 
         dialog = CalibrationDialog(self.settings, provider, self)
         dialog.changed.connect(lambda: self.log.add_line("Cursor region calibrated"))
-        dialog.exec()
+        # The wizard asks you to point around the screen; without this the
+        # pointer would chase your hand and you couldn't click the dialog.
+        pipeline.cursor_suspended = True
+        try:
+            dialog.exec()
+        finally:
+            pipeline.cursor_suspended = False
 
     def _on_practice_toggled(self, on: bool) -> None:
         self.settings.set("safety.practice_mode", on)
@@ -612,7 +618,8 @@ class MainWindow(QMainWindow):
             self.gesture_name.setStyleSheet(
                 f"font-size: 30px; font-weight: 600; color: {theme.GOOD};"
             )
-            self.gesture_action.setText(f"{state.dial_degrees:+.0f}° · volume")
+            where = f"{result.dial_target} volume" if result.dial_target else "volume"
+            self.gesture_action.setText(f"{state.dial_degrees:+.0f}° · {where}")
             self.hold_bar.setValue(0)
         else:
             self.gesture_name.setText(
@@ -625,7 +632,10 @@ class MainWindow(QMainWindow):
 
             if label:
                 action = self.settings.binding_for(label)
-                self.gesture_action.setText(f"→ {self.settings.action_label(action)}")
+                target = self.settings.binding_target(label)
+                self.gesture_action.setText(
+                    f"→ {self.settings.action_label(action, target)}"
+                )
             elif state.armed:
                 self.gesture_action.setText("Listening for gestures")
             else:
@@ -668,8 +678,10 @@ class MainWindow(QMainWindow):
         self.chip_latency.setText(f"{result.inference_ms:.1f} ms")
 
         for gesture, action in result.fired:
+            target = self.settings.binding_target(gesture)
             self.flash.flash(
-                f"{self.settings.gesture_label(gesture)} → {self.settings.action_label(action)}"
+                f"{self.settings.gesture_label(gesture)} → "
+                f"{self.settings.action_label(action, target)}"
             )
 
     def _arm_hint(self) -> str:

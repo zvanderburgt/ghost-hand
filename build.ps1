@@ -44,6 +44,17 @@ if (-not $NoTest) {
         throw 'Built exe did not exit cleanly'
     }
     Write-Host "== smoke test exit code: $($p.ExitCode) ==" -ForegroundColor Green
+
+    Write-Host '== audio probe (pycaw in the frozen build) ==' -ForegroundColor Cyan
+    $probe = Start-Process -FilePath $exe -ArgumentList '--audio-probe' -PassThru
+    if (-not $probe.WaitForExit(30000)) {
+        $probe.Kill()
+        throw 'Audio probe did not exit cleanly'
+    }
+    if ($probe.ExitCode -ne 0) {
+        throw "Audio probe failed ($($probe.ExitCode))"
+    }
+    Write-Host "== audio probe exit code: $($probe.ExitCode) ==" -ForegroundColor Green
 }
 
 # The smoke test writes user state (settings, the "guide seen" flag). Never

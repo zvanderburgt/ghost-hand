@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .config import Settings
+from .config import APP_AUDIO_ACTIONS, Settings
 from .custom import CUSTOM_CUTOFF, distance
 
 ERROR = "error"
@@ -43,20 +43,23 @@ def check_bindings(settings: Settings) -> list[Issue]:
     arm_pose = str(settings.get("engine.arm_pose", "") or "")
 
     for scope, rows in _sets(settings):
-        by_gesture: dict[str, list[str]] = {}
-        by_action: dict[str, list[str]] = {}
+        by_gesture: dict[str, list[tuple[str, str]]] = {}
+        by_action: dict[tuple[str, str], list[str]] = {}
         for row in rows:
             gesture = row.get("gesture") or "?"
             action = row.get("action") or "none"
-            by_gesture.setdefault(gesture, []).append(action)
+            target = str(row.get("target") or "")
+            by_gesture.setdefault(gesture, []).append((action, target))
             if action != "none":
-                by_action.setdefault(action, []).append(gesture)
+                by_action.setdefault((action, target), []).append(gesture)
 
         for gesture, actions in by_gesture.items():
             if len(actions) > 1:
                 unique = sorted(set(actions))
                 if len(unique) > 1:
-                    labels = ", ".join(settings.action_label(a) for a in unique)
+                    labels = ", ".join(
+                        settings.action_label(a, t) for a, t in unique
+                    )
                     issues.append(Issue(
                         ERROR,
                         f"{scope}: «{_gesture_name(settings, gesture)}» is bound to "
@@ -69,12 +72,12 @@ def check_bindings(settings: Settings) -> list[Issue]:
                         f"{len(actions)} times",
                     ))
 
-        for action, gestures in by_action.items():
+        for (action, target), gestures in by_action.items():
             if len(gestures) > 1:
                 names = ", ".join(_gesture_name(settings, g) for g in gestures)
                 issues.append(Issue(
                     WARNING,
-                    f"{scope}: «{settings.action_label(action)}» is bound to "
+                    f"{scope}: «{settings.action_label(action, target)}» is bound to "
                     f"{len(gestures)} gestures ({names})",
                 ))
 
@@ -95,6 +98,12 @@ def check_bindings(settings: Settings) -> list[Issue]:
                     f"{scope}: «{_gesture_name(settings, gesture)}» launches an app "
                     f"but no path is set",
                 ))
+            elif action in APP_AUDIO_ACTIONS and not row.get("target"):
+                issues.append(Issue(
+                    WARNING,
+                    f"{scope}: «{_gesture_name(settings, gesture)}» changes an app's "
+                    f"volume but no app is set",
+                ))
             elif gesture and str(gesture).startswith("custom:"):
                 if settings.custom_gesture(str(gesture).split(":", 1)[1]) is None:
                     issues.append(Issue(
@@ -106,7 +115,8 @@ def check_bindings(settings: Settings) -> list[Issue]:
                     issues.append(Issue(
                         WARNING,
                         f"{scope}: «{_gesture_name(settings, arm_pose)}» is the arming pose, "
-                        f"so its «{settings.action_label(row.get('action'))}» binding never fires",
+                        f"so its «{settings.action_label(row.get('action'), row.get('target'))}» "
+                        f"binding never fires",
                     ))
                     break
 

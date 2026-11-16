@@ -75,6 +75,18 @@ def main() -> int:
     check("app launch without a path warns",
           messages(check_bindings(missing_path), "no path is set"))
 
+    missing_app = Settings()
+    missing_app.set_binding("peace", "audio.app_up")
+    check("app volume without an app warns",
+          messages(check_bindings(missing_app), "no app is set"))
+
+    two_apps = Settings()
+    two_apps.set_binding("peace", "audio.app_up", "spotify.exe")
+    two_apps.set_binding("fist", "audio.app_up", "chrome.exe")
+    check("different app targets are separate actions",
+          not messages(check_bindings(two_apps), "bound to 2 gestures"),
+          str([i.message for i in check_bindings(two_apps)]))
+
     # ---- arming pose ---------------------------------------------------- #
     armed = Settings()
     armed.set_binding(armed.get("engine.arm_pose"), "media.play_pause")
